@@ -1,24 +1,30 @@
+//All of the code in this file was written by me
+
 #include <Adafruit_CircuitPlayground.h>
 
-int gameCounter = 0;
+int reactionTime = 2000;
+bool difficulty = false;
 volatile bool switchFlag = false;
 volatile bool leftButtonFlag = false;
 volatile bool rightButtonFlag = false;
 bool switchState;
-bool counterMode = true;
+bool pause = true;
 bool buttonState = false;
 bool leftButtonState = false;
 bool rightButtonState = false;
 int randomPixel;
 int randomColor;
 int randomDelay;
+bool leftSide;
+bool rightSide;
+int counter = 0;
 
 void setup() {
 Serial.begin(9600);
 CircuitPlayground.begin();
 attachInterrupt(digitalPinToInterrupt(7),switchISR,CHANGE);
-attachInterrupt(digitalPinToInterrupt(4),leftButtonISR,FALLING);
-attachInterrupt(digitalPinToInterrupt(5),rightButtonISR,FALLING);
+attachInterrupt(digitalPinToInterrupt(4),leftButtonISR,CHANGE);
+attachInterrupt(digitalPinToInterrupt(5),rightButtonISR,CHANGE);
 }
 
 void switchISR(){
@@ -32,133 +38,149 @@ void rightButtonISR(){
   rightButtonFlag = true;
 }
 
+void happySound(){
+  CircuitPlayground.playTone(800,150);
+  CircuitPlayground.playTone(200,150);
+  leftButtonFlag = false;
+  rightButtonFlag = false;
+  leftSide = false;
+  rightSide = false;
+  counter = counter+1;
+}
+
+void sadSound(){
+  CircuitPlayground.playTone(200,175);
+  CircuitPlayground.playTone(200,175);
+  leftButtonFlag = false;
+  rightButtonFlag = false;
+  leftSide = false;
+  rightSide = false;
+  Serial.print("Game over. You score was ");
+  Serial.println(counter);
+  counter = 0;
+  pause = true;
+}
+
 void loop() {
 
 if(switchFlag == true){
   delay(5);
   switchState = digitalRead(7);
   if(switchState == HIGH){
-    counterMode = false;
+    pause = false;
   }
   else{
-    counterMode = true;
+    pause = true;
   }
   switchFlag = false;
 }
 
-if(counterMode == true){
+if(pause == true){
   if(leftButtonFlag == true||rightButtonFlag == true){
     delay(5);
     leftButtonState = digitalRead(4);
     rightButtonState = digitalRead(5);
-    if(leftButtonState == LOW||rightButtonState == LOW){
-      if(gameCounter == 0||gameCounter == 2){
-        gameCounter = 1;
+    if(leftButtonState == HIGH ||rightButtonState == HIGH){
+      if(difficulty == false){
+        difficulty = true;
+        leftButtonFlag = false;
+        rightButtonFlag = false;
+        Serial.println("Hard Mode");
       }
       else{
-        gameCounter = 2;
+        difficulty = false;
+        leftButtonFlag = false;
+        rightButtonFlag = false;
+        Serial.println("Easy Mode");
       }
     }
   }
-  leftButtonFlag = false;
-  rightButtonFlag = false;
 }
 
-if(counterMode == false){
-  if(gameCounter == 1){
+if(difficulty == false){
+  reactionTime = 1500;
+}
+else{
+  reactionTime = 500;
+}
+
+if(pause == false){
     randomPixel = random(0,10);
     randomColor = random(0,2);
-    randomDelay = random(300,1000);
-    delay(randomDelay);
     if(randomColor == 0){
       CircuitPlayground.setPixelColor(randomPixel,255,0,0);
     }
     else{
       CircuitPlayground.setPixelColor(randomPixel,0,255,0);
     }
-    delay(500);
+    delay(reactionTime);
+  if(randomPixel <= 4){
+    leftSide = true;
+  }
+  else if(randomPixel >= 5){
+    rightSide = true;
+    leftSide = false;
+  }
     CircuitPlayground.clearPixels();
-  if(randomPixel == 0||1||2||3||4){
+  if(leftSide == true){
     if(randomColor == 0){
-      if(leftButtonFlag == true){
-        delay(5);
-        leftButtonState = digitalRead(4);
-        if(leftButtonState == LOW){
-          CircuitPlayground.playTone(200,200);
-        }
+      if(leftButtonFlag == true && rightButtonFlag == false){
+        sadSound();
       }
-      else if(rightButtonFlag == true){
-        delay(5);
-        rightButtonState = digitalRead(5);
-        if(rightButtonState == LOW){
-          CircuitPlayground.playTone(800,200);
-        }
+      else if(rightButtonFlag == true && leftButtonFlag == false){
+        happySound();
       }
-      else if(leftButtonFlag == true && rightButtonFlag == true){
-        delay(5);
-        leftButtonState = digitalRead(4);
-        rightButtonState = digitalRead(5);
-        if(leftButtonState == HIGH && rightButtonState == HIGH){
-          CircuitPlayground.playTone(200,200);
-        }
+      else if(rightButtonFlag == true && leftButtonFlag == true){
+        sadSound();
+      }
+      else if(rightButtonFlag == false && leftButtonFlag == false){
+        sadSound();
       }
     }
     else if(randomColor == 1){
-      if(leftButtonFlag == true){
-        delay(5);
-        leftButtonState = digitalRead(4);
-        if(leftButtonState == LOW){
-          CircuitPlayground.playTone(800,200);
-        }
+      if(leftButtonFlag == true && rightButtonFlag == false){
+        happySound();
       }
-      else if(rightButtonFlag == true){
-        delay(5);
-        rightButtonState = digitalRead(5);
-        if(rightButtonState == LOW){
-          CircuitPlayground.playtone(200,200);
-        }
+      else if(rightButtonFlag == true && leftButtonFlag == false){
+        sadSound();
       }
-      else if(leftButtonFlag == true && leftButtonFlag == true){
-        CircuitPlayground.playTone(200,200);
+      else if(rightButtonFlag == true && leftButtonFlag == true){
+       sadSound();
+      }
+      else if(rightButtonFlag == false && leftButtonFlag == false){
+        sadSound();
       }
     }
   }
-  if(randomPixel == 5||6||7||8||9){
+  if(rightSide == true){
     if(randomColor == 0){
-      delay(5);
-      leftButtonState = digitalRead(4);
-      rightButtonState = digitalRead(5);
-      if(leftButtonState == LOW){
-        CircuitPlayground.playTone(800,200);
+      if(leftButtonFlag == true && rightButtonFlag == false){
+        happySound();
       }
-      else if(rightButtonState == LOW){
-        CircuitPlayground.playTone(200,200);
+      else if(rightButtonFlag == true && leftButtonFlag == false){
+        sadSound();
       }
-      else if(leftButtonState == HIGH && leftButtonState == HIGH){
-        CircuitPlayground.playTone(200,200);
+      else if(rightButtonFlag == true && leftButtonFlag == true){
+        sadSound();
+      }
+      else if(rightButtonFlag == false && leftButtonFlag == false){
+        sadSound();
       }
     }
     else if(randomColor == 1){
-      delay(5);
-      leftButtonState = digitalRead(4);
-      rightButtonState = digitalRead(5);
-      if(leftButtonState == LOW){
-        CircuitPlayground.playTone(200,200);
+      if(leftButtonFlag == true && rightButtonFlag == false){
+        sadSound();
       }
-      else if(rightButtonState == LOW){
-        CircuitPlayground.playTone(800,200);
+      else if(rightButtonFlag == true && leftButtonFlag == false){
+        happySound();
       }
-      else if(leftButtonState == HIGH && leftButtonState == HIGH){
-        CircuitPlayground.playTone(200,200);
+      else if(rightButtonFlag == true && leftButtonFlag == true){
+        sadSound();
+      }
+      else if(rightButtonFlag == false && leftButtonFlag == false){
+        sadSound();
       }
     }
-  }
   }
 }
-Serial.print("gameCounter is ");
-Serial.println(gameCounter);
-delay(500);
-Serial.print("switchState is ");
-Serial.println(switchState);
-delay(500);
 }
